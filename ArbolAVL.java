@@ -1,100 +1,192 @@
-package com.progra3.smartplayer.estructuras;
-
-import com.progra3.smartplayer.modelo.Cancion;
+package smartplayer.structures;
+import smartplayer.models.Song;
 
 public class ArbolAVL {
-    private Nodo raiz;
-
-    public void insertar(Cancion cancion) {
-        raiz = insertar(raiz, cancion);
+    public NodoArbol raiz;
+    
+    public ArbolAVL() {
+        raiz = null;
+    }
+    
+    private int altura(NodoArbol N) {
+        if (N == null) return 0;
+        return N.altura;
+    }
+    
+    private int max(int a, int b) {
+        return (a > b) ? a : b;
+    }
+    
+    private NodoArbol rotacionDerecha(NodoArbol y) {
+        NodoArbol x = y.izquierdo;
+        NodoArbol T2 = x.derecho;
+        
+        x.derecho = y;
+        y.izquierdo = T2;
+        
+        y.altura = max(altura(y.izquierdo), altura(y.derecho)) + 1;
+        x.altura = max(altura(x.izquierdo), altura(x.derecho)) + 1;
+        
+        return x;
+    }
+    
+    private NodoArbol rotacionIzquierda(NodoArbol x) {
+        NodoArbol y = x.derecho;
+        NodoArbol T2 = y.izquierdo;
+        
+        y.izquierdo = x;
+        x.derecho = T2;
+        
+        x.altura = max(altura(x.izquierdo), altura(x.derecho)) + 1;
+        y.altura = max(altura(y.izquierdo), altura(y.derecho)) + 1;
+        
+        return y;
+    }
+    
+    private int getBalance(NodoArbol N) {
+        if (N == null) return 0;
+        return altura(N.izquierdo) - altura(N.derecho);
+    }
+    
+    public void insertar(Song song) {
+        raiz = insertarRec(raiz, song);
+    }
+    
+    private NodoArbol insertarRec(NodoArbol nodo, Song song) {
+        if (nodo == null) return new NodoArbol(song);
+        
+        if (song.getTitle().compareToIgnoreCase(nodo.song.getTitle()) < 0)
+            nodo.izquierdo = insertarRec(nodo.izquierdo, song);
+        else if (song.getTitle().compareToIgnoreCase(nodo.song.getTitle()) > 0)
+            nodo.derecho = insertarRec(nodo.derecho, song);
+        else
+            nodo.derecho = insertarRec(nodo.derecho, song);
+            
+        nodo.altura = 1 + max(altura(nodo.izquierdo), altura(nodo.derecho));
+        
+        int balance = getBalance(nodo);
+        
+        if (balance > 1 && song.getTitle().compareToIgnoreCase(nodo.izquierdo.song.getTitle()) < 0)
+            return rotacionDerecha(nodo);
+            
+        if (balance < -1 && song.getTitle().compareToIgnoreCase(nodo.derecho.song.getTitle()) > 0)
+            return rotacionIzquierda(nodo);
+            
+        if (balance > 1 && song.getTitle().compareToIgnoreCase(nodo.izquierdo.song.getTitle()) > 0) {
+            nodo.izquierdo = rotacionIzquierda(nodo.izquierdo);
+            return rotacionDerecha(nodo);
+        }
+        
+        if (balance < -1 && song.getTitle().compareToIgnoreCase(nodo.derecho.song.getTitle()) < 0) {
+            nodo.derecho = rotacionDerecha(nodo.derecho);
+            return rotacionIzquierda(nodo);
+        }
+        
+        return nodo;
+    }
+    
+    public Song buscar(String titulo) {
+        NodoArbol res = buscarRec(raiz, titulo);
+        return res != null ? res.song : null;
+    }
+    
+    private NodoArbol buscarRec(NodoArbol raiz, String titulo) {
+        if (raiz == null || raiz.song.getTitle().equalsIgnoreCase(titulo)) {
+            return raiz;
+        }
+        if (titulo.compareToIgnoreCase(raiz.song.getTitle()) < 0) {
+            return buscarRec(raiz.izquierdo, titulo);
+        }
+        return buscarRec(raiz.derecho, titulo);
+    }
+    
+    /** Elimina un nodo por título manteniendo el balanceo AVL. */
+    public void eliminar(String titulo) {
+        raiz = eliminarRec(raiz, titulo);
     }
 
-    private Nodo insertar(Nodo nodo, Cancion cancion) {
-        if (nodo == null) {
-            return new Nodo(cancion);
-        }
-        int comparacion = cancion.compareTo(nodo.cancion);
-        if (comparacion < 0) {
-            nodo.izquierda = insertar(nodo.izquierda, cancion);
-        } else if (comparacion > 0) {
-            nodo.derecha = insertar(nodo.derecha, cancion);
+    private NodoArbol eliminarRec(NodoArbol nodo, String titulo) {
+        if (nodo == null) return null;
+
+        int cmp = titulo.compareToIgnoreCase(nodo.song.getTitle());
+        if (cmp < 0) {
+            nodo.izquierdo = eliminarRec(nodo.izquierdo, titulo);
+        } else if (cmp > 0) {
+            nodo.derecho = eliminarRec(nodo.derecho, titulo);
         } else {
-            return nodo;
+            // Nodo a eliminar encontrado
+            if (nodo.izquierdo == null) return nodo.derecho;
+            if (nodo.derecho  == null) return nodo.izquierdo;
+            // Sucesor in-order (menor del subárbol derecho)
+            NodoArbol sucesor = nodo.derecho;
+            while (sucesor.izquierdo != null) sucesor = sucesor.izquierdo;
+            nodo.song = sucesor.song;
+            nodo.derecho = eliminarRec(nodo.derecho, sucesor.song.getTitle());
         }
 
-        actualizarAltura(nodo);
-        return balancear(nodo);
-    }
+        // Actualizar altura
+        nodo.altura = 1 + max(altura(nodo.izquierdo), altura(nodo.derecho));
 
-    public Cancion buscar(String nombre) {
-        Nodo actual = raiz;
-        while (actual != null) {
-            int comparacion = actual.cancion.compararPorNombre(nombre);
-            if (comparacion == 0) {
-                return actual.cancion;
-            }
-            actual = comparacion > 0 ? actual.izquierda : actual.derecha;
+        // Rebalancear
+        int balance = getBalance(nodo);
+        // LL
+        if (balance > 1 && getBalance(nodo.izquierdo) >= 0)
+            return rotacionDerecha(nodo);
+        // LR
+        if (balance > 1 && getBalance(nodo.izquierdo) < 0) {
+            nodo.izquierdo = rotacionIzquierda(nodo.izquierdo);
+            return rotacionDerecha(nodo);
         }
-        return null;
-    }
-
-    private Nodo balancear(Nodo nodo) {
-        int balance = balance(nodo);
-        if (balance > 1) {
-            if (balance(nodo.izquierda) < 0) {
-                nodo.izquierda = rotarIzquierda(nodo.izquierda);
-            }
-            return rotarDerecha(nodo);
-        }
-        if (balance < -1) {
-            if (balance(nodo.derecha) > 0) {
-                nodo.derecha = rotarDerecha(nodo.derecha);
-            }
-            return rotarIzquierda(nodo);
+        // RR
+        if (balance < -1 && getBalance(nodo.derecho) <= 0)
+            return rotacionIzquierda(nodo);
+        // RL
+        if (balance < -1 && getBalance(nodo.derecho) > 0) {
+            nodo.derecho = rotacionDerecha(nodo.derecho);
+            return rotacionIzquierda(nodo);
         }
         return nodo;
     }
 
-    private Nodo rotarDerecha(Nodo y) {
-        Nodo x = y.izquierda;
-        Nodo temporal = x.derecha;
-        x.derecha = y;
-        y.izquierda = temporal;
-        actualizarAltura(y);
-        actualizarAltura(x);
-        return x;
-    }
-
-    private Nodo rotarIzquierda(Nodo x) {
-        Nodo y = x.derecha;
-        Nodo temporal = y.izquierda;
-        y.izquierda = x;
-        x.derecha = temporal;
-        actualizarAltura(x);
-        actualizarAltura(y);
-        return y;
-    }
-
-    private void actualizarAltura(Nodo nodo) {
-        nodo.altura = 1 + Math.max(altura(nodo.izquierda), altura(nodo.derecha));
-    }
-
-    private int altura(Nodo nodo) {
-        return nodo == null ? 0 : nodo.altura;
-    }
-
-    private int balance(Nodo nodo) {
-        return nodo == null ? 0 : altura(nodo.izquierda) - altura(nodo.derecha);
-    }
-
-    private static class Nodo {
-        private Cancion cancion;
-        private Nodo izquierda;
-        private Nodo derecha;
-        private int altura = 1;
-
-        private Nodo(Cancion cancion) {
-            this.cancion = cancion;
+    public void inOrden(ListaSimple resultado) { inOrdenRec(raiz, resultado); }
+    private void inOrdenRec(NodoArbol nodo, ListaSimple resultado) {
+        if (nodo != null) {
+            inOrdenRec(nodo.izquierdo, resultado);
+            resultado.insertar(nodo.song);
+            inOrdenRec(nodo.derecho, resultado);
         }
+    }
+
+    public void preOrden(ListaSimple resultado) { preOrdenRec(raiz, resultado); }
+    private void preOrdenRec(NodoArbol nodo, ListaSimple resultado) {
+        if (nodo != null) {
+            resultado.insertar(nodo.song);
+            preOrdenRec(nodo.izquierdo, resultado);
+            preOrdenRec(nodo.derecho, resultado);
+        }
+    }
+
+    public void postOrden(ListaSimple resultado) { postOrdenRec(raiz, resultado); }
+    private void postOrdenRec(NodoArbol nodo, ListaSimple resultado) {
+        if (nodo != null) {
+            postOrdenRec(nodo.izquierdo, resultado);
+            postOrdenRec(nodo.derecho, resultado);
+            resultado.insertar(nodo.song);
+        }
+    }
+
+    /**
+     * Modifica los metadatos de una cancion identificada por su titulo.
+     * Elimina el nodo original y reinsertar con los datos actualizados
+     * para mantener el balanceo AVL.
+     * @param tituloOriginal titulo actual de la cancion a modificar
+     * @param songActualizada objeto Song con los nuevos datos
+     * @return true si la cancion fue encontrada y modificada, false si no existe
+     */
+    public boolean modificar(String tituloOriginal, smartplayer.models.Song songActualizada) {
+        if (buscar(tituloOriginal) == null) return false;
+        eliminar(tituloOriginal);
+        insertar(songActualizada);
+        return true;
     }
 }

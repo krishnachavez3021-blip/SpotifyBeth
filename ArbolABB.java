@@ -1,81 +1,114 @@
-package com.progra3.smartplayer.estructuras;
-
-import com.progra3.smartplayer.modelo.Cancion;
+package smartplayer.structures;
+import smartplayer.models.Song;
 
 public class ArbolABB {
-    private Nodo raiz;
-
-    public void insertar(Cancion cancion) {
-        raiz = insertar(raiz, cancion);
+    public NodoArbol raiz;
+    
+    public ArbolABB() {
+        raiz = null;
     }
-
-    private Nodo insertar(Nodo actual, Cancion cancion) {
-        if (actual == null) {
-            return new Nodo(cancion);
+    
+    public void insertar(Song song) {
+        raiz = insertarRec(raiz, song);
+    }
+    
+    private NodoArbol insertarRec(NodoArbol raiz, Song song) {
+        if (raiz == null) {
+            return new NodoArbol(song);
         }
-        if (cancion.compareTo(actual.cancion) < 0) {
-            actual.izquierda = insertar(actual.izquierda, cancion);
-        } else if (cancion.compareTo(actual.cancion) > 0) {
-            actual.derecha = insertar(actual.derecha, cancion);
+        if (song.getTitle().compareToIgnoreCase(raiz.song.getTitle()) < 0) {
+            raiz.izquierdo = insertarRec(raiz.izquierdo, song);
+        } else if (song.getTitle().compareToIgnoreCase(raiz.song.getTitle()) > 0) {
+            raiz.derecho = insertarRec(raiz.derecho, song);
+        } else {
+            raiz.derecho = insertarRec(raiz.derecho, song);
         }
-        return actual;
+        return raiz;
     }
-
-    public Cancion buscar(String nombre) {
-        Nodo actual = raiz;
-        while (actual != null) {
-            int comparacion = actual.cancion.compararPorNombre(nombre);
-            if (comparacion == 0) {
-                return actual.cancion;
-            }
-            actual = comparacion > 0 ? actual.izquierda : actual.derecha;
+    
+    public Song buscar(String titulo) {
+        NodoArbol res = buscarRec(raiz, titulo);
+        return res != null ? res.song : null;
+    }
+    
+    private NodoArbol buscarRec(NodoArbol raiz, String titulo) {
+        if (raiz == null || raiz.song.getTitle().equalsIgnoreCase(titulo)) {
+            return raiz;
         }
-        return null;
+        if (titulo.compareToIgnoreCase(raiz.song.getTitle()) < 0) {
+            return buscarRec(raiz.izquierdo, titulo);
+        }
+        return buscarRec(raiz.derecho, titulo);
     }
-
-    public void imprimirInOrden() {
-        inOrden(raiz);
+    
+    public void eliminar(String titulo) {
+        raiz = eliminarRec(raiz, titulo);
     }
-
-    public void imprimirPreOrden() {
-        preOrden(raiz);
+    
+    private NodoArbol eliminarRec(NodoArbol raiz, String titulo) {
+        if (raiz == null) return raiz;
+        
+        if (titulo.compareToIgnoreCase(raiz.song.getTitle()) < 0) {
+            raiz.izquierdo = eliminarRec(raiz.izquierdo, titulo);
+        } else if (titulo.compareToIgnoreCase(raiz.song.getTitle()) > 0) {
+            raiz.derecho = eliminarRec(raiz.derecho, titulo);
+        } else {
+            if (raiz.izquierdo == null) return raiz.derecho;
+            else if (raiz.derecho == null) return raiz.izquierdo;
+            
+            raiz.song = minValue(raiz.derecho);
+            raiz.derecho = eliminarRec(raiz.derecho, raiz.song.getTitle());
+        }
+        return raiz;
     }
-
-    public void imprimirPostOrden() {
-        postOrden(raiz);
+    
+    private Song minValue(NodoArbol raiz) {
+        Song minv = raiz.song;
+        while (raiz.izquierdo != null) {
+            minv = raiz.izquierdo.song;
+            raiz = raiz.izquierdo;
+        }
+        return minv;
     }
-
-    private void inOrden(Nodo nodo) {
+    
+    public void inOrden(ListaSimple resultado) { inOrdenRec(raiz, resultado); }
+    private void inOrdenRec(NodoArbol nodo, ListaSimple resultado) {
         if (nodo != null) {
-            inOrden(nodo.izquierda);
-            System.out.println(nodo.cancion);
-            inOrden(nodo.derecha);
+            inOrdenRec(nodo.izquierdo, resultado);
+            resultado.insertar(nodo.song);
+            inOrdenRec(nodo.derecho, resultado);
         }
     }
-
-    private void preOrden(Nodo nodo) {
+    
+    public void preOrden(ListaSimple resultado) { preOrdenRec(raiz, resultado); }
+    private void preOrdenRec(NodoArbol nodo, ListaSimple resultado) {
         if (nodo != null) {
-            System.out.println(nodo.cancion);
-            preOrden(nodo.izquierda);
-            preOrden(nodo.derecha);
+            resultado.insertar(nodo.song);
+            preOrdenRec(nodo.izquierdo, resultado);
+            preOrdenRec(nodo.derecho, resultado);
         }
     }
-
-    private void postOrden(Nodo nodo) {
+    
+    public void postOrden(ListaSimple resultado) { postOrdenRec(raiz, resultado); }
+    private void postOrdenRec(NodoArbol nodo, ListaSimple resultado) {
         if (nodo != null) {
-            postOrden(nodo.izquierda);
-            postOrden(nodo.derecha);
-            System.out.println(nodo.cancion);
+            postOrdenRec(nodo.izquierdo, resultado);
+            postOrdenRec(nodo.derecho, resultado);
+            resultado.insertar(nodo.song);
         }
     }
 
-    private static class Nodo {
-        private Cancion cancion;
-        private Nodo izquierda;
-        private Nodo derecha;
-
-        private Nodo(Cancion cancion) {
-            this.cancion = cancion;
-        }
+    /**
+     * Modifica los metadatos de una cancion identificada por su titulo.
+     * Elimina el nodo original y lo reinserta con los datos actualizados.
+     * @param tituloOriginal titulo actual de la cancion a modificar
+     * @param songActualizada objeto Song con los nuevos datos
+     * @return true si la cancion fue encontrada y modificada, false si no existe
+     */
+    public boolean modificar(String tituloOriginal, Song songActualizada) {
+        if (buscar(tituloOriginal) == null) return false;
+        eliminar(tituloOriginal);
+        insertar(songActualizada);
+        return true;
     }
 }
